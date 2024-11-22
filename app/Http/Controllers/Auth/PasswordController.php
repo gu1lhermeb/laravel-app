@@ -10,6 +10,9 @@ use Illuminate\Validation\Rules\Password;
 
 class PasswordController extends Controller
 {
+    public function __construct(public Password $password)
+    {}
+
     /**
      * Update the user's password.
      */
@@ -17,7 +20,7 @@ class PasswordController extends Controller
     {
         $validated = $request->validateWithBag('updatePassword', [
             'current_password' => ['required', 'current_password'],
-            'password' => ['required', Password::defaults(), 'confirmed'],
+            'password' => ['required', $this->password::defaults(), 'confirmed'],
         ]);
 
         $request->user()->update([

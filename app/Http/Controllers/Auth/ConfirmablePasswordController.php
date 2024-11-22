@@ -11,6 +11,9 @@ use Illuminate\View\View;
 
 class ConfirmablePasswordController extends Controller
 {
+    public function __construct(public ValidationException $validationException)
+    {}
+
     /**
      * Show the confirm password view.
      */
@@ -28,7 +31,7 @@ class ConfirmablePasswordController extends Controller
             'email' => $request->user()->email,
             'password' => $request->password,
         ])) {
-            throw ValidationException::withMessages([
+            throw $this->validationException::withMessages([
                 'password' => __('auth.password'),
             ]);
         }
