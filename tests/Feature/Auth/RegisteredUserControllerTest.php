@@ -5,7 +5,6 @@ namespace Tests\Feature\Auth;
 use Tests\TestCase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Auth\Events\Registered;
-use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class RegisteredUserControllerTest extends TestCase
