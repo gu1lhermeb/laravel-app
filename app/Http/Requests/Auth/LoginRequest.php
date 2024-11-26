@@ -3,14 +3,34 @@
 namespace App\Http\Requests\Auth;
 
 use Illuminate\Auth\Events\Lockout;
+use Illuminate\Contracts\Auth\Factory as AuthFactory;
+use Illuminate\Contracts\Translation\Translator;
+use Illuminate\Contracts\Validation\Factory as ValidationFactory;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Cache\RateLimiter as CacheRateLimiter;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 
 class LoginRequest extends FormRequest
 {
+    private $auth;
+    private $rateLimiter;
+    private $translator;
+    private $validator;
+
+    public function __construct(
+        AuthFactory $auth,
+        CacheRateLimiter $rateLimiter,
+        Translator $translator,
+        ValidationFactory $validator
+    ) {
+        parent::__construct();
+        $this->auth = $auth;
+        $this->rateLimiter = $rateLimiter;
+        $this->translator = $translator;
+        $this->validator = $validator;
+    }
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -22,7 +42,7 @@ class LoginRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -41,15 +61,15 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
-            RateLimiter::hit($this->throttleKey());
+        if (!$this->auth->guard()->attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+            $this->rateLimiter->hit($this->throttleKey());
 
-            throw ValidationException::withMessages([
-                'email' => trans('auth.failed'),
+            throw $this->validator->make([], [])->messages([
+                'email' => $this->translator->get('auth.failed'),
             ]);
         }
 
-        RateLimiter::clear($this->throttleKey());
+        $this->rateLimiter->clear($this->throttleKey());
     }
 
     /**
@@ -59,16 +79,16 @@ class LoginRequest extends FormRequest
      */
     public function ensureIsNotRateLimited(): void
     {
-        if (! RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
+        if (!$this->rateLimiter->tooManyAttempts($this->throttleKey(), 5)) {
             return;
         }
 
         event(new Lockout($this));
 
-        $seconds = RateLimiter::availableIn($this->throttleKey());
+        $seconds = $this->rateLimiter->availableIn($this->throttleKey());
 
-        throw ValidationException::withMessages([
-            'email' => trans('auth.throttle', [
+        throw $this->validator->make([], [])->messages([
+            'email' => $this->translator->get('auth.throttle', [
                 'seconds' => $seconds,
                 'minutes' => ceil($seconds / 60),
             ]),

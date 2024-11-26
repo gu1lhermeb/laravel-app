@@ -11,6 +11,8 @@ use Illuminate\View\View;
 
 class ProfileController extends Controller
 {
+    public function __construct(public Auth $auth)
+    {}
     /**
      * Display the user's profile form.
      */
@@ -48,7 +50,7 @@ class ProfileController extends Controller
 
         $user = $request->user();
 
-        Auth::logout();
+        $this->auth->logout();
 
         $user->delete();
 
